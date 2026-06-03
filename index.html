@@ -2,203 +2,27 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>2D Human Football</title>
+<title>2D Football Full Logic</title>
 <style>
 body { margin:0; background:#064b28; overflow:hidden; }
 canvas { display:block; margin:auto; background:#0b7a3d; }
-#ui { position:fixed; top:10px; left:10px; color:white; font-family:sans-serif; }
-#time { position:fixed; top:10px; right:10px; color:white; }
+
+#ui{
+  position:fixed;
+  top:10px;
+  left:10px;
+  color:white;
+  font-family:sans-serif;
+  font-size:20px;
+}
 </style>
 </head>
 <body>
 
-<div id="ui">
-  <div id="score">0 : 0</div>
-</div>
-
-<div id="time">300</div>
-
+<div id="ui">0 : 0</div>
 <canvas id="game" width="900" height="500"></canvas>
 
-<script>
-const c = document.getElementById("game");
-const ctx = c.getContext("2d");
-
-// SCORE
-let s1 = 0;
-let s2 = 0;
-
-// TIMER
-let time = 300;
-
-// PLAYERS
-let p1 = { x:200, y:250, vx:0, vy:0, color:"cyan" };
-let p2 = { x:700, y:250, vx:0, vy:0, color:"orange" };
-
-// BALL
-let ball = { x:450, y:250, vx:3, vy:2, r:8 };
-
-// GAMEPAD
-function pad(i){
-  return navigator.getGamepads()[i];
-}
-
-// COLLISION
-function dist(a,b){
-  return Math.hypot(a.x-b.x, a.y-b.y);
-}
-
-// RESET BALL
-function reset(dir){
-  ball.x = 450;
-  ball.y = 250;
-  ball.vx = dir * 4;
-  ball.vy = 2;
-}
-
-// TIMER
-setInterval(()=>{
-  if(time>0) time--;
-  document.getElementById("time").innerText = time;
-
-  if(time === 0){
-    alert(s1 > s2 ? "Player 1 Win!" : s2 > s1 ? "Player 2 Win!" : "Draw!");
-    location.reload();
-  }
-},1000);
-
-// UPDATE
-function update(){
-
-  let p1pad = pad(0);
-  let p2pad = pad(1);
-
-  // ===== PLAYER 1 =====
-  if(p1pad){
-    let x = p1pad.axes[0];
-    let y = p1pad.axes[1];
-
-    if(Math.abs(x)>0.2) p1.x += x*5;
-    if(Math.abs(y)>0.2) p1.y += y*5;
-
-    // shoot ✕
-    if(p1pad.buttons[0].pressed && dist(p1,ball)<30){
-      ball.vx = 6;
-    }
-  }
-
-  // ===== PLAYER 2 =====
-  if(p2pad){
-    let x = p2pad.axes[0];
-    let y = p2pad.axes[1];
-
-    if(Math.abs(x)>0.2) p2.x += x*5;
-    if(Math.abs(y)>0.2) p2.y += y*5;
-
-    // shoot ✕
-    if(p2pad.buttons[0].pressed && dist(p2,ball)<30){
-      ball.vx = -6;
-    }
-  }
-
-  // BALL
-  ball.x += ball.vx;
-  ball.y += ball.vy;
-
-  ball.vx *= 0.99;
-  ball.vy *= 0.99;
-
-  // WALL BOUNCE
-  if(ball.y<0 || ball.y>500) ball.vy *= -1;
-
-  // GOAL LEFT
-  if(ball.x < 40 && ball.y > 180 && ball.y < 320){
-    s2++;
-    document.getElementById("score").innerText = s1+" : "+s2;
-    reset(1);
-  }
-
-  // GOAL RIGHT
-  if(ball.x > 860 && ball.y > 180 && ball.y < 320){
-    s1++;
-    document.getElementById("score").innerText = s1+" : "+s2;
-    reset(-1);
-  }
-
-  // LIMIT PLAYER
-  [p1,p2].forEach(p=>{
-    p.x = Math.max(0,Math.min(900,p.x));
-    p.y = Math.max(0,Math.min(500,p.y));
-  });
-
-}
-
-// DRAW HUMAN PLAYER
-function drawPlayer(p){
-
-  // head
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(p.x, p.y-15, 6, 0, Math.PI*2);
-  ctx.fill();
-
-  // body
-  ctx.fillStyle=p.color;
-  ctx.fillRect(p.x-5, p.y-10, 10, 20);
-
-  // legs
-  ctx.strokeStyle="black";
-  ctx.beginPath();
-  ctx.moveTo(p.x-5,p.y+10);
-  ctx.lineTo(p.x-10,p.y+20);
-  ctx.moveTo(p.x+5,p.y+10);
-  ctx.lineTo(p.x+10,p.y+20);
-  ctx.stroke();
-}
-
-// DRAW
-function draw(){
-
-  ctx.clearRect(0,0,900,500);
-
-  // FIELD
-  ctx.fillStyle="#0a7a3a";
-  ctx.fillRect(0,0,900,500);
-
-  // CENTER LINE
-  ctx.strokeStyle="white";
-  ctx.beginPath();
-  ctx.moveTo(450,0);
-  ctx.lineTo(450,500);
-  ctx.stroke();
-
-  // GOAL LEFT
-  ctx.fillStyle="white";
-  ctx.fillRect(0,180,10,140);
-
-  // GOAL RIGHT
-  ctx.fillRect(890,180,10,140);
-
-  // PLAYERS
-  drawPlayer(p1);
-  drawPlayer(p2);
-
-  // BALL
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2);
-  ctx.fill();
-}
-
-// LOOP
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-loop();
-</script>
+<script src="game.js"></script>
 
 </body>
 </html>
