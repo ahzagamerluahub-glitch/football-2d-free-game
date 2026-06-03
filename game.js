@@ -2,136 +2,93 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 // SCORE
-let score1 = 0;
-let score2 = 0;
+let s1 = 0;
+let s2 = 0;
 
 // PLAYERS
-let p1 = { x:200, y:250, color:"cyan" };
-let p2 = { x:700, y:250, color:"orange" };
+let p1 = { x:200, y:250 };
+let p2 = { x:700, y:250 };
 
 // BALL
 let ball = { x:450, y:250, vx:0, vy:0 };
 
-// DIRECTION CONTROL (default kanan)
-let dir1 = { x:1, y:0 };
-let dir2 = { x:-1, y:0 };
+// GAMEPAD CACHE (BIAR STABIL)
+let pads = [];
 
-// GAMEPAD
-function pad(i){
-  return navigator.getGamepads()[i];
+// UPDATE GAMEPAD LIST
+function updatePads(){
+  pads = navigator.getGamepads();
+  requestAnimationFrame(updatePads);
 }
+updatePads();
 
-// DIST
+// CHECK DIST
 function dist(a,b){
   return Math.hypot(a.x-b.x, a.y-b.y);
 }
 
 // RESET BALL
-function resetBall(){
+function resetBall(dir){
   ball.x = 450;
   ball.y = 250;
-  ball.vx = 0;
+  ball.vx = dir * 5;
   ball.vy = 0;
 }
 
-// LIMIT FIELD (BIAR BOLA GAK HILANG)
-function clampBall(){
-
-  // kiri kanan = GOAL
-  if(ball.x < 0){
-    score2++;
-    updateScore();
-    resetBall();
-  }
-
-  if(ball.x > 900){
-    score1++;
-    updateScore();
-    resetBall();
-  }
-
-  // atas bawah = MANTUL
-  if(ball.y < 10){
-    ball.y = 10;
-    ball.vy *= -0.6;
-  }
-
-  if(ball.y > 490){
-    ball.y = 490;
-    ball.vy *= -0.6;
-  }
-}
-
-function updateScore(){
-  document.getElementById("ui").innerText = score1 + " : " + score2;
-}
-
-// DRAW PLAYER (simple human)
-function drawPlayer(p){
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(p.x, p.y-10, 6, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.fillStyle=p.color;
+// DRAW PLAYER (orang simple)
+function drawPlayer(p,color){
+  ctx.fillStyle=color;
   ctx.fillRect(p.x-5,p.y-5,10,20);
 
-  ctx.strokeStyle="black";
+  ctx.fillStyle="white";
   ctx.beginPath();
-  ctx.moveTo(p.x-5,p.y+15);
-  ctx.lineTo(p.x-10,p.y+25);
-  ctx.moveTo(p.x+5,p.y+15);
-  ctx.lineTo(p.x+10,p.y+25);
-  ctx.stroke();
+  ctx.arc(p.x,p.y-10,6,0,Math.PI*2);
+  ctx.fill();
 }
 
-// INPUT BUTTON MAP PS
-function handleDirection(pad, dir){
-
-  if(!pad) return dir;
-
-  // △ UP = buttons[3]
-  if(pad.buttons[3].pressed) dir = {x:0, y:-1};
-
-  // ○ RIGHT = buttons[1]
-  if(pad.buttons[1].pressed) dir = {x:1, y:0};
-
-  // ✕ DOWN = buttons[0]
-  if(pad.buttons[0].pressed) dir = {x:0, y:1};
-
-  // □ LEFT = buttons[2]
-  if(pad.buttons[2].pressed) dir = {x:-1, y:0};
-
-  return dir;
+// INPUT SAFE (ANTI BUG)
+function getPad(i){
+  return pads && pads[i] ? pads[i] : null;
 }
 
-// UPDATE GAME
+// UPDATE
 function update(){
 
-  let p1pad = pad(0);
-  let p2pad = pad(1);
+  let p1pad = getPad(0);
+  let p2pad = getPad(1);
 
   // ===== PLAYER 1 =====
   if(p1pad){
 
-    // arah dari tombol
-    dir1 = handleDirection(p1pad, dir1);
+    let x = p1pad.axes[0];
+    let y = p1pad.axes[1];
 
-    // R1 SHOOT = buttons[5]
-    if(p1pad.buttons[5].pressed && dist(p1,ball)<40){
-      ball.vx = dir1.x * 8;
-      ball.vy = dir1.y * 8;
+    if(Math.abs(x)>0.2) p1.x += x*5;
+    if(Math.abs(y)>0.2) p1.y += y*5;
+
+    // SHOOT = R1 (fallback aman)
+    if(p1pad.buttons[5] && p1pad.buttons[5].pressed){
+      if(dist(p1,ball)<40){
+        ball.vx = 6;
+        ball.vy = 0;
+      }
     }
   }
 
   // ===== PLAYER 2 =====
   if(p2pad){
 
-    dir2 = handleDirection(p2pad, dir2);
+    let x = p2pad.axes[0];
+    let y = p2pad.axes[1];
 
-    if(p2pad.buttons[5].pressed && dist(p2,ball)<40){
-      ball.vx = dir2.x * 8;
-      ball.vy = dir2.y * 8;
+    if(Math.abs(x)>0.2) p2.x += x*5;
+    if(Math.abs(y)>0.2) p2.y += y*5;
+
+    if(p2pad.buttons[5] && p2pad.buttons[5].pressed){
+      if(dist(p2,ball)<40){
+        ball.vx = -6;
+        ball.vy = 0;
+      }
     }
   }
 
@@ -140,19 +97,33 @@ function update(){
   ball.y += ball.vy;
 
   ball.vx *= 0.98;
-  ball.vy *= 0.98;
 
-  // BORDER + GOAL LOGIC
-  clampBall();
+  // ===== BOUNDARY (BIAR GAK HILANG) =====
+  if(ball.y < 10){ ball.y = 10; ball.vy *= -0.6; }
+  if(ball.y > 490){ ball.y = 490; ball.vy *= -0.6; }
 
-  // LIMIT PLAYER FIELD
+  // ===== GOAL LEFT =====
+  if(ball.x < 10 && ball.y > 180 && ball.y < 320){
+    s2++;
+    document.getElementById("ui").innerText = s1+" : "+s2;
+    resetBall(1);
+  }
+
+  // ===== GOAL RIGHT =====
+  if(ball.x > 890 && ball.y > 180 && ball.y < 320){
+    s1++;
+    document.getElementById("ui").innerText = s1+" : "+s2;
+    resetBall(-1);
+  }
+
+  // LIMIT PLAYER
   [p1,p2].forEach(p=>{
     p.x = Math.max(20,Math.min(880,p.x));
     p.y = Math.max(20,Math.min(480,p.y));
   });
 }
 
-// DRAW FIELD
+// DRAW FIELD + GOAL
 function draw(){
 
   ctx.clearRect(0,0,900,500);
@@ -161,20 +132,23 @@ function draw(){
   ctx.fillStyle="#0b7a3d";
   ctx.fillRect(0,0,900,500);
 
-  // MID LINE
+  // CENTER LINE
   ctx.strokeStyle="white";
   ctx.beginPath();
   ctx.moveTo(450,0);
   ctx.lineTo(450,500);
   ctx.stroke();
 
-  // BORDER VISUAL
-  ctx.strokeStyle="rgba(255,255,255,0.2)";
-  ctx.strokeRect(0,0,900,500);
+  // 🥅 GOAL LEFT
+  ctx.fillStyle="white";
+  ctx.fillRect(0,180,10,140);
+
+  // 🥅 GOAL RIGHT
+  ctx.fillRect(890,180,10,140);
 
   // PLAYERS
-  drawPlayer(p1);
-  drawPlayer(p2);
+  drawPlayer(p1,"cyan");
+  drawPlayer(p2,"orange");
 
   // BALL
   ctx.fillStyle="white";
