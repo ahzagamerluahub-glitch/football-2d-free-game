@@ -12,7 +12,7 @@ let p2 = { x:700, y:250, color:"orange" };
 // BALL
 let ball = { x:450, y:250, vx:0, vy:0 };
 
-// AIM (right stick)
+// AIM
 let aim1 = { x:1, y:0 };
 let aim2 = { x:-1, y:0 };
 
@@ -34,13 +34,13 @@ function resetBall(){
   ball.vy = 0;
 }
 
-// LIMIT FIELD (biar bola gak hilang)
-function clamp(){
+// LIMIT FIELD
+function clampBall(){
   if(ball.y < 10){ ball.y = 10; ball.vy *= -0.5; }
   if(ball.y > 490){ ball.y = 490; ball.vy *= -0.5; }
 }
 
-// DRAW PLAYER (human simple)
+// DRAW PLAYER
 function drawPlayer(p){
   ctx.fillStyle="white";
   ctx.beginPath();
@@ -59,6 +59,29 @@ function drawPlayer(p){
   ctx.stroke();
 }
 
+// 🔥 FIX: AUTO DETECT RIGHT STICK (INI YANG MEMPERBAIKI BUG KAMU)
+function getRightStick(pad){
+
+  const pairs = [
+    [2,3],
+    [3,4],
+    [4,5]
+  ];
+
+  for(let p of pairs){
+    let x = pad.axes[p[0]];
+    let y = pad.axes[p[1]];
+
+    if(x !== undefined && y !== undefined){
+      if(Math.abs(x) > 0.15 || Math.abs(y) > 0.15){
+        return {x,y};
+      }
+    }
+  }
+
+  return {x:0,y:0};
+}
+
 // UPDATE GAME
 function update(){
 
@@ -71,21 +94,19 @@ function update(){
     let lx = p1pad.axes[0];
     let ly = p1pad.axes[1];
 
-    let rx = p1pad.axes[2] || 0;
-    let ry = p1pad.axes[3] || 0;
-
-    // move
+    // MOVE
     if(Math.abs(lx)>0.2) p1.x += lx*5;
     if(Math.abs(ly)>0.2) p1.y += ly*5;
 
-    // aim right stick
-    if(Math.abs(rx)>0.2 || Math.abs(ry)>0.2){
-      let len = Math.hypot(rx,ry);
-      aim1.x = rx/len;
-      aim1.y = ry/len;
+    // AIM RIGHT STICK FIX
+    let rs = getRightStick(p1pad);
+    let len = Math.hypot(rs.x,rs.y);
+    if(len > 0.1){
+      aim1.x = rs.x/len;
+      aim1.y = rs.y/len;
     }
 
-    // shoot
+    // SHOOT ✕
     if(p1pad.buttons[0].pressed && dist(p1,ball)<40){
       ball.vx = aim1.x * 8;
       ball.vy = aim1.y * 8;
@@ -98,16 +119,14 @@ function update(){
     let lx = p2pad.axes[0];
     let ly = p2pad.axes[1];
 
-    let rx = p2pad.axes[2] || 0;
-    let ry = p2pad.axes[3] || 0;
-
     if(Math.abs(lx)>0.2) p2.x += lx*5;
     if(Math.abs(ly)>0.2) p2.y += ly*5;
 
-    if(Math.abs(rx)>0.2 || Math.abs(ry)>0.2){
-      let len = Math.hypot(rx,ry);
-      aim2.x = rx/len;
-      aim2.y = ry/len;
+    let rs = getRightStick(p2pad);
+    let len = Math.hypot(rs.x,rs.y);
+    if(len > 0.1){
+      aim2.x = rs.x/len;
+      aim2.y = rs.y/len;
     }
 
     if(p2pad.buttons[0].pressed && dist(p2,ball)<40){
@@ -123,7 +142,7 @@ function update(){
   ball.vx *= 0.98;
   ball.vy *= 0.98;
 
-  clamp();
+  clampBall();
 
   // GOAL LEFT
   if(ball.x < 10){
@@ -177,7 +196,7 @@ function draw(){
   ctx.arc(ball.x,ball.y,8,0,Math.PI*2);
   ctx.fill();
 
-  // AIM LINE (P1 debug feel)
+  // AIM LINE P1
   ctx.strokeStyle="yellow";
   ctx.beginPath();
   ctx.moveTo(ball.x,ball.y);
